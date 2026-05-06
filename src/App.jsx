@@ -37,7 +37,6 @@ function formatCurrency(v) {
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 }
 
-// ── LOGIN ──────────────────────────────────────────────────────────
 function Login({ onLogin }) {
   const [pwd, setPwd] = useState("");
   const [erro, setErro] = useState(false);
@@ -58,49 +57,56 @@ function Login({ onLogin }) {
   }
 
   return (
-    <div style={{minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Mono',monospace"}}>
-      <div style={{background:C.surface, border:`1px solid ${C.border2}`, borderRadius:14, padding:"40px 36px", width:320, textAlign:"center"}}>
-        <div style={{width:48, height:48, borderRadius:12, background:`linear-gradient(135deg,${C.blueDark},${C.red})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:900, color:"#fff", margin:"0 auto 20px"}}>LP</div>
-        <div style={{fontSize:16, fontWeight:700, color:"#fff", marginBottom:4}}>LandingPro</div>
-        <div style={{fontSize:11, color:C.muted, letterSpacing:2, marginBottom:28}}>ACESSO RESTRITO</div>
-
-        <div style={{position:"relative", marginBottom:12}}>
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace"}}>
+      <div style={{background:C.surface,border:`1px solid ${C.border2}`,borderRadius:14,padding:"40px 36px",width:320,textAlign:"center"}}>
+        <div style={{width:48,height:48,borderRadius:12,background:`linear-gradient(135deg,${C.blueDark},${C.red})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:900,color:"#fff",margin:"0 auto 20px"}}>LP</div>
+        <div style={{fontSize:16,fontWeight:700,color:"#fff",marginBottom:4}}>LandingPro</div>
+        <div style={{fontSize:11,color:C.muted,letterSpacing:2,marginBottom:28}}>ACESSO RESTRITO</div>
+        <div style={{position:"relative",marginBottom:12}}>
           <input
-            type={show ? "text" : "password"}
+            type={show?"text":"password"}
             placeholder="Sua senha"
             value={pwd}
-            onChange={e=>{setPwd(e.target.value); setErro(false);}}
+            onChange={e=>{setPwd(e.target.value);setErro(false);}}
             onKeyDown={e=>e.key==="Enter"&&tentar()}
-            style={{...inp, textAlign:"center", borderColor: erro ? C.red : C.border2}}
+            style={{...inp,textAlign:"center",borderColor:erro?C.red:C.border2}}
           />
-          <button onClick={()=>setShow(s=>!s)} style={{position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:C.muted, cursor:"pointer", fontSize:14}}>
-            {show ? "🙈" : "👁️"}
+          <button onClick={()=>setShow(s=>!s)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:14}}>
+            {show?"🙈":"👁️"}
           </button>
         </div>
-
-        {erro && <div style={{fontSize:11, color:C.red, marginBottom:10}}>Senha incorreta</div>}
-
-        <button onClick={tentar} style={{...btnStyle, width:"100%", padding:"11px"}}>Entrar</button>
-        <div style={{fontSize:10, color:C.dim, marginTop:16}}>Apenas você tem acesso</div>
+        {erro&&<div style={{fontSize:11,color:C.red,marginBottom:10}}>Senha incorreta</div>}
+        <button onClick={tentar} style={{...btnStyle,width:"100%",padding:"11px"}}>Entrar</button>
+        <div style={{fontSize:10,color:C.dim,marginTop:16}}>Apenas você tem acesso</div>
       </div>
     </div>
   );
 }
 
-// ── GRÁFICO DE LINHA ───────────────────────────────────────────────
 function LineChart({ data, color }) {
   const [hover, setHover] = useState(null);
   const W=600, H=160;
   const pad={top:20,bottom:32,left:56,right:16};
   const iW=W-pad.left-pad.right, iH=H-pad.top-pad.bottom;
   const maxV=Math.max(...data.map(d=>d.total),1);
-  const pts=data.map((d,i)=>({x:pad.left+(i/(data.length-1))*iW, y:pad.top+iH-(d.total/maxV)*iH, ...d}));
+
+  if (data.length < 2) return (
+    <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontSize:12}}>
+      Registre vendas em mais de um mês para ver o gráfico
+    </div>
+  );
+
+  const pts=data.map((d,i)=>({
+    x: pad.left+(i/(data.length-1))*iW,
+    y: pad.top+iH-(d.total/maxV)*iH,
+    ...d
+  }));
   const pathD=pts.map((p,i)=>`${i===0?"M":"L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
   const areaD=`${pathD} L ${pts[pts.length-1].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} Z`;
-  const yTicks=[0,.25,.5,.75,1].map(f=>({y:pad.top+iH-f*iH, v:Math.round(f*maxV)}));
+  const yTicks=[0,.25,.5,.75,1].map(f=>({y:pad.top+iH-f*iH,v:Math.round(f*maxV)}));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,overflow:"visible",display:"block"}}>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,display:"block"}}>
       <defs>
         <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
@@ -136,7 +142,6 @@ function LineChart({ data, color }) {
   );
 }
 
-// ── GRÁFICO DE BARRAS ──────────────────────────────────────────────
 function BarChart({ data }) {
   const now=new Date();
   const maxV=Math.max(...data.map(d=>d.total),1);
@@ -159,16 +164,13 @@ function BarChart({ data }) {
   );
 }
 
-// ── APP PRINCIPAL ──────────────────────────────────────────────────
 export default function App() {
   const [authed, setAuthed] = useState(!!sessionStorage.getItem("lp_pwd"));
   const [pwd, setPwd] = useState(sessionStorage.getItem("lp_pwd")||"");
-
   const [tab, setTab] = useState("Dashboard");
   const [sales, setSales] = useState(()=>{try{return JSON.parse(localStorage.getItem("lp_sales")||"[]")}catch{return[]}});
   const [prospects, setProspects] = useState(()=>{try{return JSON.parse(localStorage.getItem("lp_prospects")||"[]")}catch{return[]}});
   const [saleForm, setSaleForm] = useState({client:"",value:"",month:new Date().getMonth(),year:new Date().getFullYear(),desc:""});
-
   const [searchSeg, setSearchSeg] = useState(SEGMENTS[0]);
   const [searchCity, setSearchCity] = useState("Rio de Janeiro");
   const [searching, setSearching] = useState(false);
@@ -221,6 +223,7 @@ export default function App() {
       const data=await res.json();
       if(data.error){setSearchError(data.error);setSearching(false);return;}
       setSearchResults(data.results||[]);
+      if((data.results||[]).length===0) setSearchError("Nenhum resultado encontrado para essa busca.");
     }catch(e){
       setSearchError("Erro de conexão. Verifique se o app está no Netlify.");
     }
@@ -236,8 +239,6 @@ export default function App() {
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Mono','Courier New',monospace"}}>
-
-      {/* Header */}
       <div style={{borderBottom:`1px solid ${C.border}`,padding:"16px 28px",display:"flex",alignItems:"center",gap:14,background:C.surface}}>
         <div style={{width:34,height:34,borderRadius:8,background:`linear-gradient(135deg,${C.blueDark},${C.red})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:"#fff"}}>LP</div>
         <div>
@@ -254,7 +255,6 @@ export default function App() {
 
       <div style={{padding:"28px",maxWidth:980,margin:"0 auto"}}>
 
-        {/* DASHBOARD */}
         {tab==="Dashboard"&&(
           <div>
             <div style={{fontSize:10,color:C.muted,letterSpacing:3,marginBottom:20}}>VISÃO GERAL</div>
@@ -298,7 +298,6 @@ export default function App() {
           </div>
         )}
 
-        {/* VENDAS */}
         {tab==="Vendas"&&(
           <div>
             <div style={{fontSize:10,color:C.muted,letterSpacing:3,marginBottom:20}}>REGISTRAR VENDAS</div>
@@ -356,102 +355,4 @@ export default function App() {
                     <div style={{width:38,height:38,borderRadius:8,background:`${C.blue}15`,border:`1px solid ${C.blue}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.blueLight,fontWeight:700}}>{MONTHS[s.month]}</div>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{s.client}</div>
-                      {s.desc&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{s.desc}</div>}
-                    </div>
-                    <div style={{fontWeight:800,fontSize:15,color:"#4ade80"}}>{formatCurrency(s.value)}</div>
-                    <div style={{fontSize:10,color:C.muted}}>{MONTHS[s.month]}/{s.year}</div>
-                    <button onClick={()=>removeSale(s.id)} style={{background:"transparent",border:`1px solid ${C.red}44`,color:C.red,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PROSPECTAR */}
-        {tab==="Prospectar"&&(
-          <div>
-            <div style={{fontSize:10,color:C.muted,letterSpacing:3,marginBottom:20}}>ENCONTRAR PROSPECTS REAIS</div>
-
-            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:20,marginBottom:16}}>
-              <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:12}}>BUSCAR NEGÓCIOS SEM SITE — GOOGLE PLACES</div>
-              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                <select value={searchSeg} onChange={e=>setSearchSeg(e.target.value)} style={{...inp,flex:1,minWidth:160}}>
-                  {SEGMENTS.map(s=><option key={s}>{s}</option>)}
-                </select>
-                <select value={searchCity} onChange={e=>setSearchCity(e.target.value)} style={{...inp,flex:1,minWidth:160}}>
-                  {CITIES.map(c=><option key={c}>{c}</option>)}
-                </select>
-                <button onClick={doSearch} disabled={searching} style={btnStyle}>
-                  {searching?"🔍 Buscando...":"🔍 Buscar"}
-                </button>
-              </div>
-              {searchError&&<div style={{fontSize:11,color:C.red,marginTop:10}}>⚠️ {searchError}</div>}
-              <div style={{fontSize:10,color:C.muted,marginTop:10,opacity:0.5}}>
-                ✅ Dados reais do Google — mostra apenas negócios sem site cadastrado
-              </div>
-            </div>
-
-            {searchResults.length>0&&(
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:10}}>
-                  {searchResults.length} NEGÓCIOS SEM SITE EM {searchCity.toUpperCase()}
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                  {searchResults.map(p=>{
-                    const already=prospects.find(x=>x.id===p.id);
-                    return(
-                      <div key={p.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
-                        <div style={{fontSize:20}}>🏪</div>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.name}</div>
-                          <div style={{fontSize:11,color:C.muted,marginTop:2}}>{p.address}</div>
-                          {p.phone&&<div style={{fontSize:11,color:C.blueLight,marginTop:2}}>📞 {p.phone}</div>}
-                          {p.rating&&<div style={{fontSize:10,color:"#f59e0b",marginTop:2}}>⭐ {p.rating} ({p.reviews} avaliações)</div>}
-                        </div>
-                        <div style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:`${C.red}15`,color:C.redLight,border:`1px solid ${C.red}33`,whiteSpace:"nowrap"}}>SEM SITE</div>
-                        <button onClick={()=>addProspect(p)} disabled={!!already} style={{...btnStyle,opacity:already?0.4:1,cursor:already?"not-allowed":"pointer",fontSize:11,padding:"6px 14px",whiteSpace:"nowrap"}}>
-                          {already?"✓ Adicionado":"+ Pipeline"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {searchResults.length===0&&!searching&&!searchError&&(
-              <div style={{textAlign:"center",padding:40,color:C.muted,fontSize:12}}>
-                Escolha um segmento e cidade e clique em Buscar
-              </div>
-            )}
-
-            {prospects.length>0&&(
-              <div>
-                <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:10}}>MEU PIPELINE ({prospects.length})</div>
-                <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                  {prospects.map(p=>(
-                    <div key={p.id} style={{background:C.surface,border:`1px solid ${STATUS_COLORS[p.status]||C.border}33`,borderLeft:`3px solid ${STATUS_COLORS[p.status]||C.border}`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:12}}>
-                      <div style={{flex:1}}>
-                        <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.name}</div>
-                        <div style={{fontSize:11,color:C.muted}}>{p.segment} · {p.city}</div>
-                        {p.phone&&<div style={{fontSize:11,color:C.blueLight,marginTop:2}}>📞 {p.phone}</div>}
-                      </div>
-                      <select value={p.status} onChange={e=>updateProspectStatus(p.id,e.target.value)} style={{...inp,width:130,color:STATUS_COLORS[p.status],borderColor:`${STATUS_COLORS[p.status]}55`}}>
-                        {Object.entries(STATUS_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-                      </select>
-                      <button onClick={()=>removeProspect(p.id)} style={{background:"transparent",border:`1px solid ${C.red}44`,color:C.red,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const inp={background:"#0a0f1e",border:"1px solid #1e2a45",borderRadius:7,color:"#e2e8f0",fontFamily:"'DM Mono',monospace",fontSize:12,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"};
-const btnStyle={background:`linear-gradient(135deg,#1d4ed8,#3b82f6)`,border:"none",borderRadius:7,color:"#fff",fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,padding:"9px 20px",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:0.5,boxShadow:`0 0 14px #3b82f644`};
+                      {s.desc&&<div style={{f
