@@ -9,23 +9,14 @@ exports.handler = async function (event) {
     return { statusCode: 200, headers, body: "" };
   }
 
-  // Verifica senha
   const senha = event.headers["x-app-password"];
   if (senha !== process.env.APP_PASSWORD) {
-    return {
-      statusCode: 401,
-      headers,
-      body: JSON.stringify({ error: "Não autorizado" }),
-    };
+    return { statusCode: 401, headers, body: JSON.stringify({ error: "Não autorizado" }) };
   }
 
   const { segment, city } = JSON.parse(event.body || "{}");
   if (!segment || !city) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Parâmetros inválidos" }),
-    };
+    return { statusCode: 400, headers, body: JSON.stringify({ error: "Parâmetros inválidos" }) };
   }
 
   const apiKey = process.env.GOOGLE_PLACES_KEY;
@@ -37,11 +28,7 @@ exports.handler = async function (event) {
     const searchData = await searchRes.json();
 
     if (!searchData.results) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: "Erro na busca" }),
-      };
+      return { statusCode: 500, headers, body: JSON.stringify({ error: "Erro na busca" }) };
     }
 
     const places = await Promise.all(
@@ -67,18 +54,12 @@ exports.handler = async function (event) {
       })
     );
 
-    const noWebsite = places.filter((p) => !p.hasWebsite);
-
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ results: noWebsite }),
+      body: JSON.stringify({ results: places }),
     };
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
