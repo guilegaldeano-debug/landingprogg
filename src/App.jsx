@@ -85,10 +85,33 @@ function Login({ onLogin }) {
 
 function LineChart({ data, color }) {
   const [hover, setHover] = useState(null);
-  const W=600, H=160;
-  const pad={top:20,bottom:32,left:56,right:16};
+  const W=600, H=180;
+  const pad={top:24,bottom:36,left:64,right:16};
   const iW=W-pad.left-pad.right, iH=H-pad.top-pad.bottom;
-  const maxV=Math.max(...data.map(d=>d.total),1);
+
+  // Só meses com dados pra calcular o máximo real
+  const withData = data.filter(d => d.total > 0);
+  const maxV = withData.length > 0 ? Math.max(...withData.map(d => d.total)) : 1;
+  // Mínimo inteligente: se todos os valores são próximos, não começar do zero
+  const minV = withData.length > 1 ? Math.max(0, Math.min(...withData.map(d => d.total)) * 0.6) : 0;
+  const range = maxV - minV || 1;
+
+  const pts = data.map((d, i) => ({
+    x: pad.left + (i / (data.length - 1)) * iW,
+    y: d.total > 0
+      ? pad.top + iH - ((d.total - minV) / range) * iH
+      : pad.top + iH, // meses zerados ficam na base
+    ...d
+  }));
+
+  const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const areaD = `${pathD} L ${pts[pts.length-1].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} Z`;
+
+  // Ticks no eixo Y baseados nos valores reais
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => ({
+    y: pad.top + iH - f * iH,
+    v: Math.round(minV + f * range)
+  }));
 
   if (data.length < 2) return (
     <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontSize:12}}>
@@ -96,44 +119,82 @@ function LineChart({ data, color }) {
     </div>
   );
 
-  const pts=data.map((d,i)=>({
-    x: pad.left+(i/(data.length-1))*iW,
-    y: pad.top+iH-(d.total/maxV)*iH,
-    ...d
-  }));
-  const pathD=pts.map((p,i)=>`${i===0?"M":"L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const areaD=`${pathD} L ${pts[pts.length-1].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} Z`;
-  const yTicks=[0,.25,.5,.75,1].map(f=>({y:pad.top+iH-f*iH,v:Math.round(f*maxV)}));
-
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,display:"block"}}>
       <defs>
         <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
+          <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
           <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
         </linearGradient>
-        <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2.5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
       </defs>
-      {yTicks.map((t,i)=>(
+
+      {/* Grid lines */}
+      {yTicks.map((t, i) => (
         <g key={i}>
-          <line x1={pad.left} y1={t.y} x2={W-pad.right} y2={t.y} stroke={C.border2} strokeWidth="1" strokeDasharray="3 4"/>
+          <line x1={pad.left} y1={t.y} x2={W-pad.right} y2={t.y} stroke={C.border2} strokeWidth="1" strokeDasharray="3 5"/>
           <text x={pad.left-8} y={t.y+4} textAnchor="end" fill={C.muted} fontSize="10" fontFamily="monospace">
-            {t.v>=1000?`${(t.v/1000).toFixed(0)}k`:t.v}
+            {t.v >= 1000 ? `${(t.v/1000).toFixed(1)}k` : t.v}
           </text>
         </g>
       ))}
+
+      {/* Area fill */}
       <path d={areaD} fill="url(#lg)"/>
+
+      {/* Line */}
       <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" filter="url(#glow)"/>
-      {pts.map((p,i)=>(
+
+      {/* Points + labels + hover */}
+      {pts.map((p, i) => (
         <g key={i}>
-          <rect x={p.x-22} y={pad.top} width={44} height={iH} fill="transparent" style={{cursor:"pointer"}} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}/>
-          {hover===i&&<line x1={p.x} y1={pad.top} x2={p.x} y2={pad.top+iH} stroke={color} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.5"/>}
-          <circle cx={p.x} cy={p.y} r={hover===i?6:3.5} fill={p.total>0?color:C.dim} stroke={C.bg} strokeWidth="2" style={{transition:"r 0.15s"}}/>
-          <text x={p.x} y={H-4} textAnchor="middle" fill={hover===i?"#fff":C.muted} fontSize="10" fontFamily="monospace">{p.label}</text>
-          {hover===i&&p.total>0&&(
+          {/* hover area */}
+          <rect
+            x={p.x-24} y={pad.top} width={48} height={iH}
+            fill="transparent" style={{cursor:"pointer"}}
+            onMouseEnter={()=>setHover(i)}
+            onMouseLeave={()=>setHover(null)}
+          />
+          {/* vertical guide on hover */}
+          {hover===i && (
+            <line x1={p.x} y1={pad.top} x2={p.x} y2={pad.top+iH}
+              stroke={color} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.4"/>
+          )}
+          {/* dot — vazio se sem dados */}
+          <circle
+            cx={p.x} cy={p.y}
+            r={hover===i ? 6 : p.total>0 ? 4 : 3}
+            fill={p.total>0 ? (hover===i ? "#fff" : color) : C.border2}
+            stroke={p.total>0 ? C.bg : C.border2}
+            strokeWidth="2"
+            style={{transition:"r 0.15s, fill 0.15s"}}
+          />
+          {/* label do mês */}
+          <text
+            x={p.x} y={H-4}
+            textAnchor="middle"
+            fill={hover===i ? "#fff" : p.total>0 ? C.blueLight : C.muted}
+            fontSize="10" fontFamily="monospace"
+            fontWeight={hover===i ? "700" : "400"}
+          >{p.label}</text>
+          {/* tooltip */}
+          {hover===i && (
             <g>
-              <rect x={p.x-50} y={p.y-34} width={100} height={24} rx={5} fill={C.surface} stroke={color} strokeWidth="1" strokeOpacity="0.7"/>
-              <text x={p.x} y={p.y-18} textAnchor="middle" fill="#fff" fontSize="11" fontFamily="monospace" fontWeight="700">{formatCurrency(p.total)}</text>
+              <rect
+                x={Math.min(p.x-54, W-pad.right-108)} y={p.y-40}
+                width={108} height={26} rx={6}
+                fill={C.surface} stroke={color} strokeWidth="1.2" strokeOpacity="0.8"
+              />
+              <text
+                x={Math.min(p.x, W-pad.right-54)} y={p.y-23}
+                textAnchor="middle" fill={p.total>0 ? "#fff" : C.muted}
+                fontSize="11" fontFamily="monospace" fontWeight="700"
+              >
+                {p.total>0 ? formatCurrency(p.total) : "Sem vendas"}
+              </text>
             </g>
           )}
         </g>
@@ -143,19 +204,27 @@ function LineChart({ data, color }) {
 }
 
 function BarChart({ data }) {
-  const now=new Date();
-  const maxV=Math.max(...data.map(d=>d.total),1);
+  const now = new Date();
+  const maxV = Math.max(...data.map(d => d.total), 1);
   return (
     <div style={{display:"flex",alignItems:"flex-end",gap:10,height:120}}>
-      {data.map((d,i)=>{
-        const isNow=d.m===now.getMonth()&&d.y===now.getFullYear();
-        const h=d.total>0?Math.max(8,(d.total/maxV)*100):4;
+      {data.map((d, i) => {
+        const isNow = d.m===now.getMonth() && d.y===now.getFullYear();
+        const h = d.total > 0 ? Math.max(8, (d.total/maxV)*100) : 4;
         return (
           <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
             <div style={{fontSize:9,color:d.total>0?C.blueLight:"transparent",fontWeight:700}}>
-              {d.total>0?`${(d.total/1000).toFixed(1)}k`:"x"}
+              {d.total>0 ? `${(d.total/1000).toFixed(1)}k` : "x"}
             </div>
-            <div style={{width:"100%",height:h,background:isNow?`linear-gradient(180deg,${C.blue},${C.blueDark})`:`linear-gradient(180deg,${C.border2},${C.dim})`,borderRadius:"4px 4px 0 0",transition:"height 0.5s",boxShadow:isNow?`0 0 10px ${C.blue}55`:"none"}}/>
+            <div style={{
+              width:"100%", height:h,
+              background: isNow
+                ? `linear-gradient(180deg,${C.blue},${C.blueDark})`
+                : `linear-gradient(180deg,${C.border2},${C.dim})`,
+              borderRadius:"4px 4px 0 0",
+              transition:"height 0.5s",
+              boxShadow: isNow ? `0 0 10px ${C.blue}55` : "none"
+            }}/>
             <div style={{fontSize:10,color:isNow?C.blueLight:C.muted}}>{d.label}</div>
           </div>
         );
@@ -182,24 +251,24 @@ export default function App() {
 
   if (!authed) return <Login onLogin={p=>{setPwd(p);setAuthed(true);}}/>;
 
-  const now=new Date();
-  const thisMonth=sales.filter(s=>s.month===now.getMonth()&&s.year===now.getFullYear());
-  const thisMonthTotal=thisMonth.reduce((a,s)=>a+Number(s.value),0);
-  const lastMonth=sales.filter(s=>{
-    const lm=now.getMonth()===0?11:now.getMonth()-1;
-    const ly=now.getMonth()===0?now.getFullYear()-1:now.getFullYear();
+  const now = new Date();
+  const thisMonth = sales.filter(s=>s.month===now.getMonth()&&s.year===now.getFullYear());
+  const thisMonthTotal = thisMonth.reduce((a,s)=>a+Number(s.value),0);
+  const lastMonth = sales.filter(s=>{
+    const lm = now.getMonth()===0?11:now.getMonth()-1;
+    const ly = now.getMonth()===0?now.getFullYear()-1:now.getFullYear();
     return s.month===lm&&s.year===ly;
   });
-  const lastMonthTotal=lastMonth.reduce((a,s)=>a+Number(s.value),0);
-  const delta=lastMonthTotal>0?Math.round(((thisMonthTotal-lastMonthTotal)/lastMonthTotal)*100):null;
-  const totalProspects=prospects.length;
-  const closedProspects=prospects.filter(p=>p.status==="fechado").length;
+  const lastMonthTotal = lastMonth.reduce((a,s)=>a+Number(s.value),0);
+  const delta = lastMonthTotal>0?Math.round(((thisMonthTotal-lastMonthTotal)/lastMonthTotal)*100):null;
+  const totalProspects = prospects.length;
+  const closedProspects = prospects.filter(p=>p.status==="fechado").length;
 
-  const mkData=(n)=>Array.from({length:n},(_,i)=>{
-    const d=new Date(now.getFullYear(),now.getMonth()-n+1+i,1);
-    const m=d.getMonth(),y=d.getFullYear();
-    const total=sales.filter(s=>s.month===m&&s.year===y).reduce((a,s)=>a+Number(s.value),0);
-    return{label:MONTHS[m],total,m,y};
+  const mkData = (n) => Array.from({length:n}, (_,i) => {
+    const d = new Date(now.getFullYear(), now.getMonth()-n+1+i, 1);
+    const m = d.getMonth(), y = d.getFullYear();
+    const total = sales.filter(s=>s.month===m&&s.year===y).reduce((a,s)=>a+Number(s.value),0);
+    return { label:MONTHS[m], total, m, y };
   });
 
   function addSale(){
@@ -214,16 +283,16 @@ export default function App() {
     setSearchError(null);
     setSearchResults([]);
     try{
-      const res=await fetch("/api/places",{
+      const res = await fetch("/api/places",{
         method:"POST",
         headers:{"Content-Type":"application/json","x-app-password":pwd},
         body:JSON.stringify({segment:searchSeg,city:searchCity}),
       });
       if(res.status===401){setSearchError("Senha inválida. Recarregue a página.");setSearching(false);return;}
-      const data=await res.json();
+      const data = await res.json();
       if(data.error){setSearchError(data.error);setSearching(false);return;}
       setSearchResults(data.results||[]);
-      if((data.results||[]).length===0) setSearchError("Nenhum resultado encontrado para essa busca.");
+      if((data.results||[]).length===0) setSearchError("Nenhum resultado encontrado. Tente outro segmento ou cidade.");
     }catch(e){
       setSearchError("Erro de conexão. Verifique se o app está no Netlify.");
     }
@@ -275,7 +344,7 @@ export default function App() {
               ))}
             </div>
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"20px 22px 14px",marginBottom:14}}>
-              <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:16}}>RECEITA — ÚLTIMOS 6 MESES</div>
+              <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:16}}>RECEITA — ÚLTIMOS 3 MESES</div>
               <BarChart data={mkData(3)}/>
             </div>
             {prospects.length>0&&(
