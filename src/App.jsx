@@ -355,4 +355,106 @@ export default function App() {
                     <div style={{width:38,height:38,borderRadius:8,background:`${C.blue}15`,border:`1px solid ${C.blue}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.blueLight,fontWeight:700}}>{MONTHS[s.month]}</div>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{s.client}</div>
-                      {s.desc&&<div style={{f
+                      {s.desc&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{s.desc}</div>}
+                    </div>
+                    <div style={{fontWeight:800,fontSize:15,color:"#4ade80"}}>{formatCurrency(s.value)}</div>
+                    <div style={{fontSize:10,color:C.muted}}>{MONTHS[s.month]}/{s.year}</div>
+                    <button onClick={()=>removeSale(s.id)} style={{background:"transparent",border:`1px solid ${C.red}44`,color:C.red,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab==="Prospectar"&&(
+          <div>
+            <div style={{fontSize:10,color:C.muted,letterSpacing:3,marginBottom:20}}>ENCONTRAR PROSPECTS REAIS</div>
+            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:20,marginBottom:16}}>
+              <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:12}}>BUSCAR NEGÓCIOS — GOOGLE PLACES</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <select value={searchSeg} onChange={e=>setSearchSeg(e.target.value)} style={{...inp,flex:1,minWidth:160}}>
+                  {SEGMENTS.map(s=><option key={s}>{s}</option>)}
+                </select>
+                <select value={searchCity} onChange={e=>setSearchCity(e.target.value)} style={{...inp,flex:1,minWidth:160}}>
+                  {CITIES.map(c=><option key={c}>{c}</option>)}
+                </select>
+                <button onClick={doSearch} disabled={searching} style={btnStyle}>
+                  {searching?"🔍 Buscando...":"🔍 Buscar"}
+                </button>
+              </div>
+              {searchError&&<div style={{fontSize:11,color:C.red,marginTop:10}}>⚠️ {searchError}</div>}
+              <div style={{fontSize:10,color:C.muted,marginTop:10,opacity:0.5}}>
+                🔴 Sem site &nbsp;|&nbsp; 🟢 Com site — priorize os sem site para prospectar
+              </div>
+            </div>
+
+            {searchResults.length>0&&(
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:10}}>
+                  {searchResults.length} RESULTADOS EM {searchCity.toUpperCase()} &nbsp;·&nbsp;
+                  <span style={{color:C.redLight}}>{searchResults.filter(r=>!r.hasWebsite).length} SEM SITE</span>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                  {searchResults.map(p=>{
+                    const already=prospects.find(x=>x.id===p.id);
+                    return(
+                      <div key={p.id} style={{background:C.surface,border:`1px solid ${p.hasWebsite?C.border:C.red+"44"}`,borderLeft:`3px solid ${p.hasWebsite?C.border2:C.red}`,borderRadius:8,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,opacity:p.hasWebsite?0.6:1}}>
+                        <div style={{fontSize:20}}>🏪</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.name}</div>
+                          <div style={{fontSize:11,color:C.muted,marginTop:2}}>{p.address}</div>
+                          {p.phone&&<div style={{fontSize:11,color:C.blueLight,marginTop:2}}>📞 {p.phone}</div>}
+                          {p.website&&<div style={{fontSize:10,color:C.muted,marginTop:2}}>🌐 {p.website}</div>}
+                          {p.rating&&<div style={{fontSize:10,color:"#f59e0b",marginTop:2}}>⭐ {p.rating} ({p.reviews} avaliações)</div>}
+                        </div>
+                        <div style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:p.hasWebsite?`#10b98115`:`${C.red}15`,color:p.hasWebsite?"#4ade80":C.redLight,border:`1px solid ${p.hasWebsite?"#10b98133":C.red+"33"}`,whiteSpace:"nowrap"}}>
+                          {p.hasWebsite?"COM SITE":"SEM SITE"}
+                        </div>
+                        {!p.hasWebsite&&(
+                          <button onClick={()=>addProspect(p)} disabled={!!already} style={{...btnStyle,opacity:already?0.4:1,cursor:already?"not-allowed":"pointer",fontSize:11,padding:"6px 14px",whiteSpace:"nowrap"}}>
+                            {already?"✓ Adicionado":"+ Pipeline"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {searchResults.length===0&&!searching&&!searchError&&(
+              <div style={{textAlign:"center",padding:40,color:C.muted,fontSize:12}}>
+                Escolha um segmento e cidade e clique em Buscar
+              </div>
+            )}
+
+            {prospects.length>0&&(
+              <div>
+                <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:10}}>MEU PIPELINE ({prospects.length})</div>
+                <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                  {prospects.map(p=>(
+                    <div key={p.id} style={{background:C.surface,border:`1px solid ${STATUS_COLORS[p.status]||C.border}33`,borderLeft:`3px solid ${STATUS_COLORS[p.status]||C.border}`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:12}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.name}</div>
+                        <div style={{fontSize:11,color:C.muted}}>{p.segment} · {p.city}</div>
+                        {p.phone&&<div style={{fontSize:11,color:C.blueLight,marginTop:2}}>📞 {p.phone}</div>}
+                      </div>
+                      <select value={p.status} onChange={e=>updateProspectStatus(p.id,e.target.value)} style={{...inp,width:130,color:STATUS_COLORS[p.status],borderColor:`${STATUS_COLORS[p.status]}55`}}>
+                        {Object.entries(STATUS_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                      </select>
+                      <button onClick={()=>removeProspect(p.id)} style={{background:"transparent",border:`1px solid ${C.red}44`,color:C.red,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const inp={background:"#0a0f1e",border:"1px solid #1e2a45",borderRadius:7,color:"#e2e8f0",fontFamily:"'DM Mono',monospace",fontSize:12,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"};
+const btnStyle={background:`linear-gradient(135deg,#1d4ed8,#3b82f6)`,border:"none",borderRadius:7,color:"#fff",fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,padding:"9px 20px",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:0.5,boxShadow:`0 0 14px #3b82f644`};
