@@ -276,7 +276,7 @@ export default function App() {
             </div>
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"20px 22px 14px",marginBottom:14}}>
               <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:16}}>RECEITA — ÚLTIMOS 6 MESES</div>
-              <BarChart data={mkData(6)}/>
+              <BarChart data={mkData(3)}/>
             </div>
             {prospects.length>0&&(
               <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"18px 22px"}}>
