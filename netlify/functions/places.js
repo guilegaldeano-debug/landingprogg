@@ -21,10 +21,10 @@ exports.handler = async function (event) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: "GOOGLE_PLACES_KEY não configurada no Netlify." }) };
   }
 
+  // segment e city já vêm prontos do frontend (com bairro específico e sinônimo rotacionado)
   const query = `${segment} em ${city} Brasil`;
 
   try {
-    // Primeira página
     const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&language=pt-BR&key=${apiKey}`;
     const searchRes = await fetch(searchUrl);
     const searchData = await searchRes.json();
@@ -41,22 +41,18 @@ exports.handler = async function (event) {
 
     let allResults = searchData.results || [];
 
-    // Segunda página se tiver
     if (searchData.next_page_token) {
-      await new Promise(r => setTimeout(r, 2000)); // Google exige delay antes de usar o token
+      await new Promise(r => setTimeout(r, 2000));
       const page2Url = `https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=${searchData.next_page_token}&key=${apiKey}`;
       const page2Res = await fetch(page2Url);
       const page2Data = await page2Res.json();
-      if (page2Data.results) {
-        allResults = [...allResults, ...page2Data.results];
-      }
+      if (page2Data.results) allResults = [...allResults, ...page2Data.results];
     }
 
     if (allResults.length === 0) {
       return { statusCode: 200, headers, body: JSON.stringify({ results: [] }) };
     }
 
-    // Busca detalhes de todos (até 40)
     const places = await Promise.all(
       allResults.slice(0, 40).map(async (place) => {
         const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,formatted_address,formatted_phone_number,website,rating,user_ratings_total&language=pt-BR&key=${apiKey}`;
@@ -79,17 +75,12 @@ exports.handler = async function (event) {
       })
     );
 
-    // Sem site primeiro, com site depois
     const sorted = [
       ...places.filter(p => !p.hasWebsite),
       ...places.filter(p => p.hasWebsite),
     ];
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ results: sorted }),
-    };
+    return { statusCode: 200, headers, body: JSON.stringify({ results: sorted }) };
   } catch (err) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
