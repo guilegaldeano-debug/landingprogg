@@ -1,104 +1,128 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const TABS = ["Dashboard", "Vendas", "Prospectar"];
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
-const SEGMENTS = [
-  "Restaurante","Lanchonete","Pizzaria","Barbearia","Salão de beleza",
-  "Pet shop","Clínica","Dentista","Advogado","Contabilidade",
-  "Escola","Academia","Mecânica","Loja de roupas","Farmácia",
-  "Padaria","Hotel","Pousada","Imobiliária","Arquiteto"
-];
+// Sinônimos por segmento — cada busca rotaciona pro próximo
+const SEGMENTS_MAP = {
+  "Restaurante":      ["Restaurante","Bar e restaurante","Bistrô","Churrascaria","Gastronomia"],
+  "Lanchonete":       ["Lanchonete","Café","Cafeteria","Sanduicheria","Snack bar"],
+  "Pizzaria":         ["Pizzaria","Pizza","Delivery de pizza","Pizzaria artesanal"],
+  "Barbearia":        ["Barbearia","Barbershop","Barber","Barbearia masculina"],
+  "Salão de beleza":  ["Salão de beleza","Cabeleireiro","Hair salon","Studio de beleza","Esmalteria"],
+  "Pet shop":         ["Pet shop","Petshop","Loja de animais","Clínica veterinária pet","Banho e tosa"],
+  "Clínica":          ["Clínica","Clínica médica","Centro médico","Ambulatório","Consultório médico"],
+  "Dentista":         ["Dentista","Odontologia","Clínica odontológica","Consultório dentário"],
+  "Advogado":         ["Advogado","Escritório de advocacia","Consultório jurídico","Advogados associados"],
+  "Contabilidade":    ["Contabilidade","Escritório contábil","Contador","Assessoria contábil"],
+  "Escola":           ["Escola","Colégio","Instituição de ensino","Escola particular","Centro educacional"],
+  "Academia":         ["Academia","Academia de ginástica","Fitness","CrossFit","Musculação"],
+  "Mecânica":         ["Mecânica","Oficina mecânica","Auto center","Mecânico","Manutenção automotiva"],
+  "Loja de roupas":   ["Loja de roupas","Boutique","Moda","Vestuário","Confecção"],
+  "Farmácia":         ["Farmácia","Drogaria","Farmácia e drogaria","Farmácia de manipulação"],
+  "Padaria":          ["Padaria","Pão","Confeitaria","Padaria artesanal","Panificadora"],
+  "Hotel":            ["Hotel","Pousada","Hospedagem","Hotel boutique","Apart hotel"],
+  "Pousada":          ["Pousada","Hospedagem","Bed and breakfast","Chalé","Aluguel de temporada"],
+  "Imobiliária":      ["Imobiliária","Corretor de imóveis","Imóveis","Agência imobiliária"],
+  "Arquiteto":        ["Arquiteto","Escritório de arquitetura","Design de interiores","Arquitetura e design"],
+};
 
-// Cidades grandes com suas regiões nobres
+const SEGMENT_NAMES = Object.keys(SEGMENTS_MAP);
+
+// Bairros separados por cidade — cada busca rotaciona pro próximo bairro
 const CITIES_MAP = {
-  "Rio de Janeiro": [
-    "Zona Sul (Ipanema, Leblon, Copacabana)",
-    "Lagoa e Jardim Botânico",
-    "Barra da Tijuca",
-    "Flamengo e Botafogo",
-    "Gávea e São Conrado",
-  ],
-  "São Paulo": [
-    "Jardins (Jardim Paulista, Jardim América)",
-    "Itaim Bibi e Vila Olímpia",
-    "Pinheiros e Alto de Pinheiros",
-    "Moema e Vila Nova Conceição",
-    "Higienópolis e Pacaembu",
-  ],
-  "Belo Horizonte": [
-    "Savassi e Funcionários",
-    "Lourdes e Anchieta",
-    "Belvedere e Mangabeiras",
-    "Sion e Carmo",
-    "Cidade Jardim e Luxemburgo",
-  ],
-  "Curitiba": [
-    "Batel e Água Verde",
-    "Bigorrilho e Champagnat",
-    "Ecoville e Santa Felicidade",
-    "Juvevê e Cabral",
-    "Mercês e Hugo Lange",
-  ],
-  "Porto Alegre": [
-    "Moinhos de Vento e Auxiliadora",
-    "Bela Vista e Mont Serrat",
-    "Três Figueiras e Boa Vista",
-    "Petrópolis e Independência",
-    "Higienópolis e Rio Branco",
-  ],
-  "Salvador": [
-    "Graça e Vitória",
-    "Barra e Ondina",
-    "Pituba e Caminho das Árvores",
-    "Itaigara e Horto Florestal",
-    "Alphaville e Patamares",
-  ],
-  "Fortaleza": [
-    "Meireles e Mucuripe",
-    "Aldeota e Dionísio Torres",
-    "Cocó e Engenheiro Luciano Cavalcante",
-    "Dunas e Guararapes",
-    "Varjota e De Lourdes",
-  ],
-  "Recife": [
-    "Boa Viagem",
-    "Graças e Casa Forte",
-    "Aflitos e Jaqueira",
-    "Madalena e Torre",
-    "Pina e Setúbal",
-  ],
-  "Manaus": [
-    "Adrianópolis e Nossa Senhora das Graças",
-    "Ponta Negra",
-    "Vieiralves e Parque Dez",
-    "Chapada e Aleixo",
-    "São Geraldo e Flores",
-  ],
-  "Goiânia": [
-    "Setor Marista e Bueno",
-    "Setor Oeste e Sul",
-    "Jardim Goiás e Jardim América",
-    "Aldeota e Park Lozandes",
-    "Nova Suíça e Sudoeste",
-  ],
-  "Florianópolis": [
-    "Jurerê Internacional",
-    "Lagoa da Conceição",
-    "Campeche e Costeira",
-    "Centro e Agronômica",
-    "Cacupé e Santo Antônio de Lisboa",
-  ],
-  "Brasília": [
-    "Lago Sul",
-    "Lago Norte",
-    "Sudoeste e Octogonal",
-    "Asa Sul (quadras nobres)",
-    "Park Way e Noroeste",
-  ],
+  "Rio de Janeiro": {
+    "Zona Sul": ["Ipanema","Leblon","Copacabana","Leme","Arpoador"],
+    "Lagoa e Jardim Botânico": ["Lagoa","Jardim Botânico","Humaitá","Cosme Velho"],
+    "Barra da Tijuca": ["Barra da Tijuca","Recreio dos Bandeirantes","Joá","São Conrado"],
+    "Botafogo e Flamengo": ["Botafogo","Flamengo","Catete","Glória"],
+    "Gávea e Urca": ["Gávea","Urca","Cosme Velho","Santa Teresa"],
+  },
+  "São Paulo": {
+    "Jardins": ["Jardim Paulista","Jardim América","Jardim Europa","Jardim Paulistano","Cerqueira César"],
+    "Itaim e Vila Olímpia": ["Itaim Bibi","Vila Olímpia","Vila Nova Conceição","Brooklin"],
+    "Pinheiros": ["Pinheiros","Alto de Pinheiros","Vila Madalena","Perdizes"],
+    "Moema": ["Moema","Ibirapuera","Vila Mariana","Paraíso"],
+    "Higienópolis": ["Higienópolis","Pacaembu","Santa Cecília","Campos Elíseos"],
+  },
+  "Belo Horizonte": {
+    "Savassi e Funcionários": ["Savassi","Funcionários","Lourdes","Santo Agostinho"],
+    "Belvedere": ["Belvedere","Mangabeiras","Sion","Carmo"],
+    "Anchieta e Cidade Jardim": ["Anchieta","Cidade Jardim","Luxemburgo","São Bento"],
+    "Buritis e Estoril": ["Buritis","Estoril","Gutierrez","Calafate"],
+    "Centro-Sul": ["Serra","Santa Efigênia","Cruzeiro","Santo Antônio"],
+  },
+  "Curitiba": {
+    "Batel": ["Batel","Água Verde","Bigorrilho","Champagnat"],
+    "Ecoville": ["Ecoville","Mossunguê","Santa Felicidade","Cascatinha"],
+    "Juvevê e Cabral": ["Juvevê","Cabral","Hugo Lange","Jardim Social"],
+    "Mercês": ["Mercês","Seminário","Vila Izabel","Campina do Siqueira"],
+    "Centro Cívico": ["Centro Cívico","Alto da Glória","Alto da Rua XV","Cristo Rei"],
+  },
+  "Porto Alegre": {
+    "Moinhos de Vento": ["Moinhos de Vento","Auxiliadora","Boa Vista","Mont Serrat"],
+    "Bela Vista": ["Bela Vista","Petrópolis","Independência","Rio Branco"],
+    "Três Figueiras": ["Três Figueiras","Chácara das Pedras","Vila Jardim","Passo da Areia"],
+    "Higienópolis": ["Higienópolis","Santana","Floresta","São João"],
+    "Menino Deus": ["Menino Deus","Praia de Belas","Azenha","Medianeira"],
+  },
+  "Salvador": {
+    "Graça e Vitória": ["Graça","Vitória","Barra","Ondina"],
+    "Pituba": ["Pituba","Caminho das Árvores","Costa Azul","Itaigara"],
+    "Horto Florestal": ["Horto Florestal","Acupe de Brotas","Brotas","Garcia"],
+    "Alphaville": ["Alphaville Salvador","Patamares","Imbuí","Stella Maris"],
+    "Rio Vermelho": ["Rio Vermelho","Amaralina","Candeal","Federação"],
+  },
+  "Fortaleza": {
+    "Meireles": ["Meireles","Mucuripe","Varjota","De Lourdes"],
+    "Aldeota": ["Aldeota","Dionísio Torres","Joaquim Távora","Papicu"],
+    "Cocó": ["Cocó","Engenheiro Luciano Cavalcante","Água Fria","Sapiranga"],
+    "Dunas": ["Dunas","Guararapes","Edson Queiroz","Cambeba"],
+    "Bairro de Fátima": ["Bairro de Fátima","Benfica","Montese","Damas"],
+  },
+  "Recife": {
+    "Boa Viagem": ["Boa Viagem","Pina","Imbiribeira","Setúbal"],
+    "Graças e Casa Forte": ["Graças","Casa Forte","Aflitos","Jaqueira"],
+    "Madalena": ["Madalena","Torre","Parnamirim","Iputinga"],
+    "Derby e Espinheiro": ["Derby","Espinheiro","Rosarinho","Tamarineira"],
+    "Ilha do Leite": ["Ilha do Leite","Boa Vista","Santo Amaro","Santo Antônio"],
+  },
+  "Manaus": {
+    "Adrianópolis": ["Adrianópolis","Nossa Senhora das Graças","São Geraldo","Flores"],
+    "Ponta Negra": ["Ponta Negra","Tarumã","Nova Esperança"],
+    "Vieiralves": ["Vieiralves","Parque Dez","Chapada","Aleixo"],
+    "Aleixo": ["Aleixo","Nossa Senhora das Graças","Chapada"],
+    "Japiim": ["Japiim","Petrópolis","Raiz","Cachoeirinha"],
+  },
+  "Goiânia": {
+    "Setor Marista": ["Setor Marista","Setor Bueno","Setor Sul","Setor Oeste"],
+    "Jardim Goiás": ["Jardim Goiás","Jardim América","Setor Pedro Ludovico"],
+    "Park Lozandes": ["Park Lozandes","Jardim Atlântico","Alto da Glória"],
+    "Setor Nova Suíça": ["Nova Suíça","Sudoeste","Setor Aeroporto"],
+    "Setor Universitário": ["Setor Universitário","Setor Central","Setor Norte Ferroviário"],
+  },
+  "Florianópolis": {
+    "Jurerê Internacional": ["Jurerê Internacional","Jurerê","Daniela","Canasvieiras"],
+    "Lagoa da Conceição": ["Lagoa da Conceição","Barra da Lagoa","Rio Tavares"],
+    "Campeche": ["Campeche","Costeira do Pirajubaé","Tapera"],
+    "Centro": ["Centro","Agronômica","Trindade","Córrego Grande"],
+    "Ingleses": ["Ingleses","Santinho","Rio Vermelho","Cachoeira do Bom Jesus"],
+  },
+  "Brasília": {
+    "Lago Sul": ["Lago Sul","Jardim Botânico","Park Way"],
+    "Lago Norte": ["Lago Norte","Varjão","Paranoá"],
+    "Sudoeste": ["Sudoeste","Octogonal","Cruzeiro"],
+    "Asa Sul": ["Asa Sul","Asa Norte","Setor Bancário Sul"],
+    "Noroeste": ["Noroeste","Setor de Mansões","Guará"],
+  },
 };
 
 const CITY_NAMES = Object.keys(CITIES_MAP);
+
+const PITCH = `Fala, bom dia! Eu me chamo Guilherme, e sou desenvolvedor de sites.
+Encontrei vcs pelo Google e reparei que vocês ainda não têm site.
+Montei uma demo gratuita para mostrar como ficaria. Sem custo, sem compromisso, só pra vocês verem o potencial. E caso se interessem, a gente negocia um valor pra fecharmos e o site oficialmente ser de vcs.
+Vcs teriam interesse em uma reunião via Google Meet rápido essa semana pra pelo menos ver o projeto?`;
 
 const C = {
   blue:"#3b82f6", blueDark:"#1d4ed8", blueLight:"#93c5fd",
@@ -118,6 +142,14 @@ const STATUS_LABELS = {
 
 function formatCurrency(v) {
   return v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+}
+
+function whatsappLink(phone) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  const intl = digits.startsWith("55") ? digits : `55${digits}`;
+  const text = encodeURIComponent(PITCH);
+  return `https://wa.me/${intl}?text=${text}`;
 }
 
 function Login({ onLogin }) {
@@ -146,10 +178,7 @@ function Login({ onLogin }) {
         <div style={{fontSize:16,fontWeight:700,color:"#fff",marginBottom:4}}>LandingPro</div>
         <div style={{fontSize:11,color:C.muted,letterSpacing:2,marginBottom:28}}>ACESSO RESTRITO</div>
         <div style={{position:"relative",marginBottom:12}}>
-          <input
-            type={show?"text":"password"}
-            placeholder="Sua senha"
-            value={pwd}
+          <input type={show?"text":"password"} placeholder="Sua senha" value={pwd}
             onChange={e=>{setPwd(e.target.value);setErro(false);}}
             onKeyDown={e=>e.key==="Enter"&&tentar()}
             style={{...inp,textAlign:"center",borderColor:erro?C.red:C.border2}}
@@ -168,67 +197,33 @@ function Login({ onLogin }) {
 
 function LineChart({ data, color }) {
   const [hover, setHover] = useState(null);
-  const W=600, H=180;
-  const pad={top:24,bottom:36,left:64,right:16};
+  const W=600, H=180, pad={top:24,bottom:36,left:64,right:16};
   const iW=W-pad.left-pad.right, iH=H-pad.top-pad.bottom;
-
-  const withData = data.filter(d => d.total > 0);
-  const maxV = withData.length > 0 ? Math.max(...withData.map(d => d.total)) : 1;
-  const minV = withData.length > 1 ? Math.max(0, Math.min(...withData.map(d => d.total)) * 0.6) : 0;
-  const range = maxV - minV || 1;
-
-  const pts = data.map((d, i) => ({
-    x: pad.left + (i / (data.length - 1)) * iW,
-    y: d.total > 0 ? pad.top + iH - ((d.total - minV) / range) * iH : pad.top + iH,
-    ...d
-  }));
-
-  const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const areaD = `${pathD} L ${pts[pts.length-1].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} Z`;
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => ({ y: pad.top + iH - f * iH, v: Math.round(minV + f * range) }));
-
-  if (data.length < 2) return (
-    <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontSize:12}}>
-      Registre vendas em mais de um mês para ver o gráfico
-    </div>
-  );
-
+  const withData=data.filter(d=>d.total>0);
+  const maxV=withData.length>0?Math.max(...withData.map(d=>d.total)):1;
+  const minV=withData.length>1?Math.max(0,Math.min(...withData.map(d=>d.total))*0.6):0;
+  const range=maxV-minV||1;
+  const pts=data.map((d,i)=>({x:pad.left+(i/(data.length-1))*iW,y:d.total>0?pad.top+iH-((d.total-minV)/range)*iH:pad.top+iH,...d}));
+  const pathD=pts.map((p,i)=>`${i===0?"M":"L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const areaD=`${pathD} L ${pts[pts.length-1].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(pad.top+iH).toFixed(1)} Z`;
+  const yTicks=[0,.25,.5,.75,1].map(f=>({y:pad.top+iH-f*iH,v:Math.round(minV+f*range)}));
+  if(data.length<2) return <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:C.muted,fontSize:12}}>Registre vendas em mais de um mês para ver o gráfico</div>;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,display:"block"}}>
       <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
-          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
-        </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2.5" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
+        <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.25"/><stop offset="100%" stopColor={color} stopOpacity="0.02"/></linearGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
-      {yTicks.map((t, i) => (
-        <g key={i}>
-          <line x1={pad.left} y1={t.y} x2={W-pad.right} y2={t.y} stroke={C.border2} strokeWidth="1" strokeDasharray="3 5"/>
-          <text x={pad.left-8} y={t.y+4} textAnchor="end" fill={C.muted} fontSize="10" fontFamily="monospace">
-            {t.v >= 1000 ? `${(t.v/1000).toFixed(1)}k` : t.v}
-          </text>
-        </g>
-      ))}
+      {yTicks.map((t,i)=><g key={i}><line x1={pad.left} y1={t.y} x2={W-pad.right} y2={t.y} stroke={C.border2} strokeWidth="1" strokeDasharray="3 5"/><text x={pad.left-8} y={t.y+4} textAnchor="end" fill={C.muted} fontSize="10" fontFamily="monospace">{t.v>=1000?`${(t.v/1000).toFixed(1)}k`:t.v}</text></g>)}
       <path d={areaD} fill="url(#lg)"/>
       <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" filter="url(#glow)"/>
-      {pts.map((p, i) => (
+      {pts.map((p,i)=>(
         <g key={i}>
           <rect x={p.x-24} y={pad.top} width={48} height={iH} fill="transparent" style={{cursor:"pointer"}} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}/>
-          {hover===i && <line x1={p.x} y1={pad.top} x2={p.x} y2={pad.top+iH} stroke={color} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.4"/>}
-          <circle cx={p.x} cy={p.y} r={hover===i?6:p.total>0?4:3} fill={p.total>0?(hover===i?"#fff":color):C.border2} stroke={p.total>0?C.bg:C.border2} strokeWidth="2" style={{transition:"r 0.15s, fill 0.15s"}}/>
+          {hover===i&&<line x1={p.x} y1={pad.top} x2={p.x} y2={pad.top+iH} stroke={color} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.4"/>}
+          <circle cx={p.x} cy={p.y} r={hover===i?6:p.total>0?4:3} fill={p.total>0?(hover===i?"#fff":color):C.border2} stroke={p.total>0?C.bg:C.border2} strokeWidth="2" style={{transition:"r 0.15s"}}/>
           <text x={p.x} y={H-4} textAnchor="middle" fill={hover===i?"#fff":p.total>0?C.blueLight:C.muted} fontSize="10" fontFamily="monospace" fontWeight={hover===i?"700":"400"}>{p.label}</text>
-          {hover===i && (
-            <g>
-              <rect x={Math.min(p.x-54, W-pad.right-108)} y={p.y-40} width={108} height={26} rx={6} fill={C.surface} stroke={color} strokeWidth="1.2" strokeOpacity="0.8"/>
-              <text x={Math.min(p.x, W-pad.right-54)} y={p.y-23} textAnchor="middle" fill={p.total>0?"#fff":C.muted} fontSize="11" fontFamily="monospace" fontWeight="700">
-                {p.total>0 ? formatCurrency(p.total) : "Sem vendas"}
-              </text>
-            </g>
-          )}
+          {hover===i&&<g><rect x={Math.min(p.x-54,W-pad.right-108)} y={p.y-40} width={108} height={26} rx={6} fill={C.surface} stroke={color} strokeWidth="1.2" strokeOpacity="0.8"/><text x={Math.min(p.x,W-pad.right-54)} y={p.y-23} textAnchor="middle" fill={p.total>0?"#fff":C.muted} fontSize="11" fontFamily="monospace" fontWeight="700">{p.total>0?formatCurrency(p.total):"Sem vendas"}</text></g>}
         </g>
       ))}
     </svg>
@@ -236,18 +231,16 @@ function LineChart({ data, color }) {
 }
 
 function BarChart({ data }) {
-  const now = new Date();
-  const maxV = Math.max(...data.map(d => d.total), 1);
+  const now=new Date();
+  const maxV=Math.max(...data.map(d=>d.total),1);
   return (
     <div style={{display:"flex",alignItems:"flex-end",gap:10,height:120}}>
-      {data.map((d, i) => {
-        const isNow = d.m===now.getMonth() && d.y===now.getFullYear();
-        const h = d.total > 0 ? Math.max(8, (d.total/maxV)*100) : 4;
+      {data.map((d,i)=>{
+        const isNow=d.m===now.getMonth()&&d.y===now.getFullYear();
+        const h=d.total>0?Math.max(8,(d.total/maxV)*100):4;
         return (
           <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-            <div style={{fontSize:9,color:d.total>0?C.blueLight:"transparent",fontWeight:700}}>
-              {d.total>0 ? `${(d.total/1000).toFixed(1)}k` : "x"}
-            </div>
+            <div style={{fontSize:9,color:d.total>0?C.blueLight:"transparent",fontWeight:700}}>{d.total>0?`${(d.total/1000).toFixed(1)}k`:"x"}</div>
             <div style={{width:"100%",height:h,background:isNow?`linear-gradient(180deg,${C.blue},${C.blueDark})`:`linear-gradient(180deg,${C.border2},${C.dim})`,borderRadius:"4px 4px 0 0",transition:"height 0.5s",boxShadow:isNow?`0 0 10px ${C.blue}55`:"none"}}/>
             <div style={{fontSize:10,color:isNow?C.blueLight:C.muted}}>{d.label}</div>
           </div>
@@ -265,20 +258,38 @@ export default function App() {
   const [prospects, setProspects] = useState(()=>{try{return JSON.parse(localStorage.getItem("lp_prospects")||"[]")}catch{return[]}});
   const [saleForm, setSaleForm] = useState({client:"",value:"",month:new Date().getMonth(),year:new Date().getFullYear(),desc:""});
 
-  const [searchSeg, setSearchSeg] = useState(SEGMENTS[0]);
+  const [searchSeg, setSearchSeg] = useState(SEGMENT_NAMES[0]);
   const [searchCity, setSearchCity] = useState(CITY_NAMES[0]);
-  const [searchRegion, setSearchRegion] = useState(CITIES_MAP[CITY_NAMES[0]][0]);
+  const [searchZone, setSearchZone] = useState(Object.keys(CITIES_MAP[CITY_NAMES[0]])[0]);
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchError, setSearchError] = useState(null);
+  const [searchInfo, setSearchInfo] = useState(""); // mostra qual bairro/sinônimo foi usado
+
+  // Contadores de rotação (persistem enquanto app aberto)
+  const neighborhoodIdx = useRef(0);
+  const synonymIdx = useRef(0);
 
   useEffect(()=>{try{localStorage.setItem("lp_sales",JSON.stringify(sales))}catch{}},[sales]);
   useEffect(()=>{try{localStorage.setItem("lp_prospects",JSON.stringify(prospects))}catch{}},[prospects]);
 
-  // Quando muda cidade, reseta região pro primeiro item
   function handleCityChange(city) {
     setSearchCity(city);
-    setSearchRegion(CITIES_MAP[city][0]);
+    const firstZone = Object.keys(CITIES_MAP[city])[0];
+    setSearchZone(firstZone);
+    neighborhoodIdx.current = 0;
+    synonymIdx.current = 0;
+  }
+
+  function handleZoneChange(zone) {
+    setSearchZone(zone);
+    neighborhoodIdx.current = 0;
+    synonymIdx.current = 0;
+  }
+
+  function handleSegChange(seg) {
+    setSearchSeg(seg);
+    synonymIdx.current = 0;
   }
 
   if (!authed) return <Login onLogin={p=>{setPwd(p);setAuthed(true);}}/>;
@@ -287,8 +298,8 @@ export default function App() {
   const thisMonth = sales.filter(s=>s.month===now.getMonth()&&s.year===now.getFullYear());
   const thisMonthTotal = thisMonth.reduce((a,s)=>a+Number(s.value),0);
   const lastMonth = sales.filter(s=>{
-    const lm = now.getMonth()===0?11:now.getMonth()-1;
-    const ly = now.getMonth()===0?now.getFullYear()-1:now.getFullYear();
+    const lm=now.getMonth()===0?11:now.getMonth()-1;
+    const ly=now.getMonth()===0?now.getFullYear()-1:now.getFullYear();
     return s.month===lm&&s.year===ly;
   });
   const lastMonthTotal = lastMonth.reduce((a,s)=>a+Number(s.value),0);
@@ -296,11 +307,11 @@ export default function App() {
   const totalProspects = prospects.length;
   const closedProspects = prospects.filter(p=>p.status==="fechado").length;
 
-  const mkData = (n) => Array.from({length:n}, (_,i) => {
-    const d = new Date(now.getFullYear(), now.getMonth()-n+1+i, 1);
-    const m = d.getMonth(), y = d.getFullYear();
-    const total = sales.filter(s=>s.month===m&&s.year===y).reduce((a,s)=>a+Number(s.value),0);
-    return { label:MONTHS[m], total, m, y };
+  const mkData = (n) => Array.from({length:n},(_,i)=>{
+    const d=new Date(now.getFullYear(),now.getMonth()-n+1+i,1);
+    const m=d.getMonth(),y=d.getFullYear();
+    const total=sales.filter(s=>s.month===m&&s.year===y).reduce((a,s)=>a+Number(s.value),0);
+    return{label:MONTHS[m],total,m,y};
   });
 
   function addSale(){
@@ -314,21 +325,33 @@ export default function App() {
     setSearching(true);
     setSearchError(null);
     setSearchResults([]);
-    // A query combina segmento + região + cidade para focar nas áreas nobres
-    const locationQuery = `${searchRegion}, ${searchCity}`;
+
+    const neighborhoods = CITIES_MAP[searchCity][searchZone];
+    const synonyms = SEGMENTS_MAP[searchSeg];
+
+    // Pega o próximo bairro e sinônimo na rotação
+    const neighborhood = neighborhoods[neighborhoodIdx.current % neighborhoods.length];
+    const synonym = synonyms[synonymIdx.current % synonyms.length];
+
+    // Avança os contadores
+    neighborhoodIdx.current = (neighborhoodIdx.current + 1) % neighborhoods.length;
+    synonymIdx.current = (synonymIdx.current + 1) % synonyms.length;
+
+    setSearchInfo(`🔍 Buscando "${synonym}" em ${neighborhood}`);
+
     try{
       const res = await fetch("/api/places",{
         method:"POST",
         headers:{"Content-Type":"application/json","x-app-password":pwd},
-        body:JSON.stringify({segment:searchSeg, city:locationQuery}),
+        body:JSON.stringify({segment:synonym, city:`${neighborhood}, ${searchCity}`}),
       });
       if(res.status===401){setSearchError("Senha inválida. Recarregue a página.");setSearching(false);return;}
       const data = await res.json();
       if(data.error){setSearchError(data.error);setSearching(false);return;}
       setSearchResults(data.results||[]);
-      if((data.results||[]).length===0) setSearchError("Nenhum resultado encontrado. Tente outro segmento ou região.");
+      if((data.results||[]).length===0) setSearchError(`Nenhum resultado em ${neighborhood}. Clique em Buscar para tentar outro bairro.`);
     }catch(e){
-      setSearchError("Erro de conexão. Verifique se o app está no Netlify.");
+      setSearchError("Erro de conexão.");
     }
     setSearching(false);
   }
@@ -339,6 +362,8 @@ export default function App() {
   }
   function updateProspectStatus(id,status){setProspects(p=>p.map(x=>x.id===id?{...x,status}:x));}
   function removeProspect(id){setProspects(p=>p.filter(x=>x.id!==id));}
+
+  const zoneNames = Object.keys(CITIES_MAP[searchCity]);
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Mono','Courier New',monospace"}}>
@@ -421,7 +446,6 @@ export default function App() {
                 <button onClick={addSale} style={btnStyle}>+ Registrar</button>
               </div>
             </div>
-
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"20px 22px 12px",marginBottom:16}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
                 <div style={{fontSize:10,color:C.muted,letterSpacing:2}}>EVOLUÇÃO — 12 MESES</div>
@@ -433,7 +457,6 @@ export default function App() {
                 <LineChart data={mkData(12)} color={C.blue}/>
               )}
             </div>
-
             {sales.length>0&&(
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
                 {[
@@ -448,7 +471,6 @@ export default function App() {
                 ))}
               </div>
             )}
-
             {sales.length===0?(
               <div style={{textAlign:"center",padding:50,color:C.muted,fontSize:12}}>Nenhuma venda registrada ainda.</div>
             ):(
@@ -476,37 +498,37 @@ export default function App() {
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:20,marginBottom:16}}>
               <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:12}}>BUSCAR NEGÓCIOS — GOOGLE PLACES</div>
               <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:10}}>
-                {/* Linha 1: segmento + cidade */}
-                <select value={searchSeg} onChange={e=>setSearchSeg(e.target.value)} style={{...inp,flex:1,minWidth:140}}>
-                  {SEGMENTS.map(s=><option key={s}>{s}</option>)}
+                <select value={searchSeg} onChange={e=>handleSegChange(e.target.value)} style={{...inp,flex:1,minWidth:140}}>
+                  {SEGMENT_NAMES.map(s=><option key={s}>{s}</option>)}
                 </select>
                 <select value={searchCity} onChange={e=>handleCityChange(e.target.value)} style={{...inp,flex:1,minWidth:140}}>
                   {CITY_NAMES.map(c=><option key={c}>{c}</option>)}
                 </select>
               </div>
               <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                {/* Linha 2: região nobre + botão */}
-                <select value={searchRegion} onChange={e=>setSearchRegion(e.target.value)} style={{...inp,flex:1,minWidth:200}}>
-                  {CITIES_MAP[searchCity].map(r=><option key={r}>{r}</option>)}
+                <select value={searchZone} onChange={e=>handleZoneChange(e.target.value)} style={{...inp,flex:1,minWidth:200}}>
+                  {zoneNames.map(z=><option key={z}>{z}</option>)}
                 </select>
                 <button onClick={doSearch} disabled={searching} style={btnStyle}>
                   {searching?"🔍 Buscando...":"🔍 Buscar"}
                 </button>
               </div>
+              {searchInfo&&!searching&&<div style={{fontSize:10,color:C.blueLight,marginTop:8,opacity:0.8}}>{searchInfo}</div>}
               {searchError&&<div style={{fontSize:11,color:C.red,marginTop:10}}>⚠️ {searchError}</div>}
               <div style={{fontSize:10,color:C.muted,marginTop:10,opacity:0.5}}>
-                🔴 Sem site &nbsp;|&nbsp; 🟢 Com site — priorize os sem site para prospectar
+                Cada clique em Buscar rotaciona automaticamente entre bairros e variações do segmento
               </div>
             </div>
 
             {searchResults.length>0&&(
               <div style={{marginBottom:16}}>
                 <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:10}}>
-                  {searchResults.length} RESULTADOS · {searchRegion.split("(")[0].trim().toUpperCase()} · <span style={{color:C.redLight}}>{searchResults.filter(r=>!r.hasWebsite).length} SEM SITE</span>
+                  {searchResults.length} RESULTADOS &nbsp;·&nbsp; <span style={{color:C.redLight}}>{searchResults.filter(r=>!r.hasWebsite).length} SEM SITE</span>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:7}}>
                   {searchResults.map(p=>{
                     const already=prospects.find(x=>x.id===p.id);
+                    const waLink=whatsappLink(p.phone);
                     return(
                       <div key={p.id} style={{background:C.surface,border:`1px solid ${p.hasWebsite?C.border:C.red+"44"}`,borderLeft:`3px solid ${p.hasWebsite?C.border2:C.red}`,borderRadius:8,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,opacity:p.hasWebsite?0.6:1}}>
                         <div style={{fontSize:20}}>🏪</div>
@@ -520,6 +542,9 @@ export default function App() {
                         <div style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:p.hasWebsite?`#10b98115`:`${C.red}15`,color:p.hasWebsite?"#4ade80":C.redLight,border:`1px solid ${p.hasWebsite?"#10b98133":C.red+"33"}`,whiteSpace:"nowrap"}}>
                           {p.hasWebsite?"COM SITE":"SEM SITE"}
                         </div>
+                        {!p.hasWebsite&&waLink&&(
+                          <a href={waLink} target="_blank" rel="noopener noreferrer" style={{...waBtnStyle,textDecoration:"none"}}>📲 WhatsApp</a>
+                        )}
                         {!p.hasWebsite&&(
                           <button onClick={()=>addProspect(p)} disabled={!!already} style={{...btnStyle,opacity:already?0.4:1,cursor:already?"not-allowed":"pointer",fontSize:11,padding:"6px 14px",whiteSpace:"nowrap"}}>
                             {already?"✓ Adicionado":"+ Pipeline"}
@@ -534,7 +559,7 @@ export default function App() {
 
             {searchResults.length===0&&!searching&&!searchError&&(
               <div style={{textAlign:"center",padding:40,color:C.muted,fontSize:12}}>
-                Escolha um segmento, cidade e região e clique em Buscar
+                Escolha segmento, cidade e zona e clique em Buscar
               </div>
             )}
 
@@ -542,19 +567,27 @@ export default function App() {
               <div>
                 <div style={{fontSize:10,color:C.muted,letterSpacing:2,marginBottom:10}}>MEU PIPELINE ({prospects.length})</div>
                 <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                  {prospects.map(p=>(
-                    <div key={p.id} style={{background:C.surface,border:`1px solid ${STATUS_COLORS[p.status]||C.border}33`,borderLeft:`3px solid ${STATUS_COLORS[p.status]||C.border}`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:12}}>
-                      <div style={{flex:1}}>
-                        <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.name}</div>
-                        <div style={{fontSize:11,color:C.muted}}>{p.segment} · {p.city}</div>
-                        {p.phone&&<div style={{fontSize:11,color:C.blueLight,marginTop:2}}>📞 {p.phone}</div>}
+                  {prospects.map(p=>{
+                    const waLink=whatsappLink(p.phone);
+                    return(
+                      <div key={p.id} style={{background:C.surface,border:`1px solid ${STATUS_COLORS[p.status]||C.border}33`,borderLeft:`3px solid ${STATUS_COLORS[p.status]||C.border}`,borderRadius:8,padding:"11px 16px",display:"flex",alignItems:"center",gap:12}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,color:"#fff",fontSize:13}}>{p.name}</div>
+                          <div style={{fontSize:11,color:C.muted}}>{p.segment} · {p.city}</div>
+                          {p.phone&&<div style={{fontSize:11,color:C.blueLight,marginTop:2}}>📞 {p.phone}</div>}
+                        </div>
+                        <select value={p.status} onChange={e=>updateProspectStatus(p.id,e.target.value)} style={{...inp,width:130,color:STATUS_COLORS[p.status],borderColor:`${STATUS_COLORS[p.status]}55`}}>
+                          {Object.entries(STATUS_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                        </select>
+                        {waLink?(
+                          <a href={waLink} target="_blank" rel="noopener noreferrer" style={{...waBtnStyle,textDecoration:"none"}}>📲 WhatsApp</a>
+                        ):(
+                          <div style={{fontSize:10,color:C.muted,whiteSpace:"nowrap",padding:"6px 10px"}}>Sem telefone</div>
+                        )}
+                        <button onClick={()=>removeProspect(p.id)} style={{background:"transparent",border:`1px solid ${C.red}44`,color:C.red,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>✕</button>
                       </div>
-                      <select value={p.status} onChange={e=>updateProspectStatus(p.id,e.target.value)} style={{...inp,width:130,color:STATUS_COLORS[p.status],borderColor:`${STATUS_COLORS[p.status]}55`}}>
-                        {Object.entries(STATUS_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-                      </select>
-                      <button onClick={()=>removeProspect(p.id)} style={{background:"transparent",border:`1px solid ${C.red}44`,color:C.red,borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>✕</button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -567,3 +600,4 @@ export default function App() {
 
 const inp={background:"#0a0f1e",border:"1px solid #1e2a45",borderRadius:7,color:"#e2e8f0",fontFamily:"'DM Mono',monospace",fontSize:12,padding:"9px 12px",outline:"none",width:"100%",boxSizing:"border-box"};
 const btnStyle={background:`linear-gradient(135deg,#1d4ed8,#3b82f6)`,border:"none",borderRadius:7,color:"#fff",fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,padding:"9px 20px",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:0.5,boxShadow:`0 0 14px #3b82f644`};
+const waBtnStyle={background:`linear-gradient(135deg,#128C7E,#25D366)`,border:"none",borderRadius:7,color:"#fff",fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:700,padding:"7px 14px",cursor:"pointer",whiteSpace:"nowrap",letterSpacing:0.5,boxShadow:`0 0 10px #25D36644`,display:"inline-block"};
